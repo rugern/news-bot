@@ -50,6 +50,6 @@ controller.hears(['hallo', 'hei'], 'message_received', function(bot, message) {
 
 controller.hears(['gi meg en artikkel'], 'message_received', function(bot, message) {
   controller.storage.users.get(message.user, function(err, user) {
-    bot.reply(message, 'Denne tror jeg du vil like:' + pickRandomArticle())
+    bot.reply(message, 'Denne tror jeg du vil like: ' + pickRandomArticle())
   })
 })
