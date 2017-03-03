@@ -70,8 +70,11 @@ controller.hears(['gi meg en artikkel'], 'message_received', function(bot, messa
       elements: [
         {
           title: title,
-          subtitle: link,
           image_url: image,
+          default_action: {
+            type: 'web_url', 
+            url: link,
+          },
           buttons: [
             {
               type: 'postback',
