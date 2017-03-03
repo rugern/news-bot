@@ -23,15 +23,15 @@ var images = [
   'https://g.acdn.no/obscura/API/dynamic/r1/ece5/tr_1080_717_l_f/0000/noly/2017/3/3/15/WebKroghBror.jpg?chk=B80860',
   'https://g.acdn.no/obscura/API/dynamic/r1/ece5/tr_1080_1145_l_f/0000/berg/2017/3/3/9/Nazi-teppe.jpg?chk=0AAB91',
   'https://g.acdn.no/obscura/API/dynamic/r1/ece5/tr_1080_720_l_f/0000/royk/2017/3/1/15/02%2Bnyh%2Bs%25C3%25A6trebakken%2Brydding.jpg?chk=13002D',
-  'https://g.acdn.no/obscura/API/dynamic/r1/ece5/tr_1080_732_l_f/0000/moss/2016/3/12/8/f%25C3%25B8rerkort.jpg?chk=FA1284'‚
+  'https://g.acdn.no/obscura/API/dynamic/r1/ece5/tr_1080_732_l_f/0000/moss/2016/3/12/8/f%25C3%25B8rerkort.jpg?chk=FA1284'
 ]
 
 var titles = [
   'Brann i hytte - må bære slangene femti meter fra vegen',
-  'Her sitter Hans-Kristian (28) i Tromsø og ser lillebror gå Norge inn til VM-gull'
-  'Fant «hakekors-teppe» på Ikea'‚
+  'Her sitter Hans-Kristian i Tromsø og ser lillebror gå Norge inn til VM-gull',
+  'Fant hakekort-teppe på Ikea', 
   'Skal forbedre utsikten mot sentrum og havna',
-  'Nå er dato for når du må bytte førerkortet bestemt',
+  'Nå er dato for når du må bytte førerkortet bestemt'
 ]
 
 var controller = Botkit.facebookbot({
@@ -41,11 +41,6 @@ var controller = Botkit.facebookbot({
 })
 var bot = controller.spawn({
 })
-
-function pickRandomArticle() {
-  var index = Math.floor(Math.random() * articles.length)
-  return articles[index]
-}
 
 controller.setupWebserver(process.env.PORT || 3000, function(err, webserver) {
   if (err) {
@@ -75,6 +70,7 @@ controller.hears(['gi meg en artikkel'], 'message_received', function(bot, messa
       elements: [
         {
           title: title,
+          subtitle: link,
           image_url: image,
           buttons: [
             {
@@ -90,7 +86,7 @@ controller.hears(['gi meg en artikkel'], 'message_received', function(bot, messa
         },
       ]
     }
-  };
+  }
   bot.reply(message, {attachment: attachment})
 })
 
@@ -100,5 +96,4 @@ controller.on('facebook_postback', function(bot, message) {
   } else if (message.payload === 'dislike') {
     bot.reply(message, 'Okay, skal prøve å finne noe kulere neste gang!')
   }
-
 })
