@@ -1,6 +1,7 @@
 var Botkit = require('botkit');
 var queryString = require('query-string');
 var fetch = require('node-fetch');
+var firebase = require('firebase');
 
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
@@ -15,6 +16,21 @@ if (!process.env.VERIFY_TOKEN) {
   console.log('Error: Specify VERIFY_TOKEN in environment');
   process.exit(1);
 }
+
+if (!process.env.FIREBASE_API_KEY) {
+  console.log('Error: Specify FIREBASE_API_KEY in environment');
+  process.exit(1);
+}
+
+if (!process.env.FIREBASE_DATABASE_URL) {
+  console.log('Error: Specify FIREBASE_DATABASE_URL in environment');
+  process.exit(1);
+}
+
+firebase.initializeApp({
+  apiKey: process.env.FIREBASE_API_KEY,
+  databaseUrl: process.env.FIREBASE_DATABASE_URL,
+});
 
 var amediaDomains = [
   'www.aasavis.no',
@@ -196,7 +212,21 @@ function initializeBot() {
   });
 
   controller.hears(['hallo', 'hei'], 'message_received', function(bot, message) {
-    console.log(message);
+    var userid = message.channel;
+    if (!users[userid]) {
+      firebase.database().ref(userid).once('value')
+        .then(function (snapshot) {
+          if (snapshot.val()) {
+            users[userid] = snapshot.val();
+          } else {
+            firebase.database().ref().push(userid);
+            users[userid] = {};
+          }
+        })
+        .catch(function (err) {
+          console.error('Firebase error:', err);
+        });
+    }
     bot.reply(message, 'Heisann!');
   });
 
