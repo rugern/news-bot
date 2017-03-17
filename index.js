@@ -3,34 +3,9 @@ var queryString = require('query-string');
 var fetch = require('node-fetch');
 var firebase = require('firebase');
 
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
-
-if (!process.env.PAGE_TOKEN) {
-  console.log('Error: Specify PAGE_TOKEN in environment');
-  process.exit(1);
-}
-
-if (!process.env.VERIFY_TOKEN) {
-  console.log('Error: Specify VERIFY_TOKEN in environment');
-  process.exit(1);
-}
-
-if (!process.env.FIREBASE_API_KEY) {
-  console.log('Error: Specify FIREBASE_API_KEY in environment');
-  process.exit(1);
-}
-
-if (!process.env.FIREBASE_DATABASE_URL) {
-  console.log('Error: Specify FIREBASE_DATABASE_URL in environment');
-  process.exit(1);
-}
-
-firebase.initializeApp({
-  apiKey: process.env.FIREBASE_API_KEY,
-  databaseUrl: process.env.FIREBASE_DATABASE_URL,
-});
+var production = process.env.NODE_ENV === 'production';
+var controller;
+var bot;
 
 var amediaDomains = [
   'www.aasavis.no',
@@ -110,8 +85,37 @@ var amediaDomains = [
 ];
 
 var base = 'https://bed.api.no/api/acpcomposer/v1.1/search/content';
-var articles = [];
-var users = [];
+var users = {};
+var sentArticles = [];
+
+if (!production) {
+  require('dotenv').config();
+}
+
+if (!process.env.PAGE_TOKEN) {
+  console.log('Error: Specify PAGE_TOKEN in environment');
+  process.exit(1);
+}
+
+if (!process.env.VERIFY_TOKEN) {
+  console.log('Error: Specify VERIFY_TOKEN in environment');
+  process.exit(1);
+}
+
+if (!process.env.FIREBASE_API_KEY) {
+  console.log('Error: Specify FIREBASE_API_KEY in environment');
+  process.exit(1);
+}
+
+if (!process.env.FIREBASE_DATABASE_URL) {
+  console.log('Error: Specify FIREBASE_DATABASE_URL in environment');
+  process.exit(1);
+}
+
+firebase.initializeApp({
+  apiKey: process.env.FIREBASE_API_KEY,
+  databaseUrl: process.env.FIREBASE_DATABASE_URL,
+});
 
 function getImage(article) {
   var relations = article._embedded.relations;
@@ -132,15 +136,18 @@ function getTags(article) {
   return tags;
 }
 
+function pushArticle(article) {
+  Object.keys(users).forEach(function (userid) {
+    bot.say({ text: 'ny artikkel', channel: userid });
+  });
+}
+
 function storeArticles(data) {
   data.forEach(function (article) {
     var domain = article._links.publication.title;
     var acpid = article.fields.id;
 
-    if (!articles[domain]) {
-      articles[domain] = {};
-    }
-    if (articles[domain][acpid]) {
+    if (sentArticles.indexOf(acpid) !== -1) {
       return;
     }
 
@@ -152,11 +159,14 @@ function storeArticles(data) {
       tags: getTags(article),
     };
 
-    articles[domain][acpid] = newArticle;
+    if (production) {
+      sentArticles.push(acpid);
+      pushArticle(newArticle);
+    }
   });
-  
-  while (articles.length > 100) {
-    delete articles[0];
+
+  while (sentArticles.length > 100) {
+    delete sentArticles[0];
   }
 }
 
@@ -191,13 +201,13 @@ setInterval(function fetchArticles() {
 getArticles();
 
 function initializeBot() {
-  var controller = Botkit.facebookbot({
+  controller = Botkit.facebookbot({
     debug: true,
     access_token: process.env.PAGE_TOKEN,
     verify_token: process.env.VERIFY_TOKEN,
   });
 
-  var bot = controller.spawn({
+  bot = controller.spawn({
   });
 
   controller.setupWebserver(process.env.PORT || 3000, function(err, webserver) {
@@ -275,6 +285,6 @@ function initializeBot() {
   });
 }
 
-if (process.env.NODE_ENV === 'production') {
+if (production) {
   initializeBot();
 }
