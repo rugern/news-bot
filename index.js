@@ -114,7 +114,7 @@ if (!process.env.FIREBASE_DATABASE_URL) {
 
 firebase.initializeApp({
   apiKey: process.env.FIREBASE_API_KEY,
-  databaseUrl: process.env.FIREBASE_DATABASE_URL,
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
 });
 
 function getImage(article) {
