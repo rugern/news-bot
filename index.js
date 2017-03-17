@@ -86,7 +86,8 @@ var amediaDomains = [
 
 var base = 'https://bed.api.no/api/acpcomposer/v1.1/search/content';
 var users = {};
-var sentArticles = [];
+var articles = [];
+var acpids = [];
 
 if (!production) {
   require('dotenv').config();
@@ -117,6 +118,24 @@ firebase.initializeApp({
   databaseURL: process.env.FIREBASE_DATABASE_URL,
 });
 
+function fetchUsers() {
+  return firebase.database().ref().once('value')
+    .then(function (snapshot) {
+      if (snapshot.val()) {
+        Object.keys(snapshot.val()).forEach(function(userid) {
+          if (!users[userid]) {
+            users[userid] = {};
+          }
+        });
+      }
+      return true;
+    })
+    .catch(function (err) {
+      console.error('Failed when fetching users:', err);
+    });
+}
+fetchUsers();
+
 function getImage(article) {
   var relations = article._embedded.relations;
   if (relations && relations.length > 0) {
@@ -136,39 +155,45 @@ function getTags(article) {
   return tags;
 }
 
-function sendArticle(article) {
-  Object.keys(users).forEach(function (userid) {
-    var attachment = {
-      type: 'template',
-      payload: {
-        template_type: 'generic',
-        elements: [
-          {
-            title: article.title,
-            subtitle: article.leadText,
-            default_action: {
-              type: 'web_url', 
-              url: article.link,
-            },
-            buttons: [
-              {
-                type: 'postback',
-                title: 'Kult!',
-                payload: 'like'
-              }, {
-                type: 'postback',
-                title: 'Likte den ikke',
-                payload: 'dislike'
-              }
-            ]
+function sendArticle(article, userid) {
+  var attachment = {
+    type: 'template',
+    payload: {
+      template_type: 'generic',
+      elements: [
+        {
+          title: article.title,
+          subtitle: article.leadText,
+          default_action: {
+            type: 'web_url', 
+            url: article.link,
           },
-        ]
-      }
-    };
-    if (article.image) {
-      attachment.payload.elements[0].image_url = article.image;
+          buttons: [
+            {
+              type: 'postback',
+              title: 'Kult!',
+              payload: 'like'
+            }, {
+              type: 'postback',
+              title: 'Likte den ikke',
+              payload: 'dislike'
+            }
+          ]
+        },
+      ]
     }
+  };
+  if (article.image) {
+    attachment.payload.elements[0].image_url = article.image;
+  }
+
+  if (userid) {
     bot.say({ channel: userid, attachment: attachment });
+    return;
+  }
+
+  Object.keys(users).forEach(function (user) {
+    bot.say({ channel: user, attachment: attachment });
   });
 }
 
@@ -177,11 +202,13 @@ function storeArticles(data) {
     var domain = article._links.publication.title;
     var acpid = article.fields.id;
 
-    if (sentArticles.indexOf(acpid) !== -1) {
+    if (acpids.indexOf(acpid) !== -1) {
       return;
     }
 
     var newArticle = {
+      domain: domain,
+      acpid: acpid,
       title: article.title,
       leadText: article.leadText,
       link: domain + article.fields.relativeUrl,
@@ -190,13 +217,15 @@ function storeArticles(data) {
     };
 
     if (production) {
-      sentArticles.push(acpid);
+      articles.push(newArticle);
+      acpids.push(acpid);
       sendArticle(newArticle);
     }
   });
 
-  while (sentArticles.length > 100) {
-    delete sentArticles[0];
+  while (articles.length > 100) {
+    delete acpids[0];
+    delete articles[0];
   }
 }
 
@@ -225,31 +254,9 @@ function getArticles() {
     });
 }
 
-function fetchUsers() {
-  return firebase.database().ref().once('value')
-    .then(function (snapshot) {
-      if (snapshot.val()) {
-        Object.keys(snapshot.val()).forEach(function(userid) {
-          if (!users[userid]) {
-            users[userid] = {};
-          }
-        });
-      }
-      return true;
-    })
-    .catch(function (err) {
-      console.error('Failed when fetching users:', err);
-    });
-}
 
 setInterval(function fetchArticles() {
-  fetchUsers()
-    .then(function () {
-      getArticles();
-    })
-    .catch(function (err) {
-      console.error('Something happened during update interval:', err);
-    });
+  getArticles();
 }, 10000);
 getArticles();
 
@@ -293,41 +300,20 @@ function initializeBot() {
     bot.reply(message, 'Heisann!');
   });
 
-  //controller.hears(['gi meg en artikkel'], 'message_received', function(bot, message) {
-    //var index = Math.floor(Math.random() * articles.length);
-    //var title = titles[index];
-    //var link = articles[index];
-    //var image = images[index];
+  controller.hears(['hadet'], 'message_received', function (bot, message) {
+    var userid = message.channel;
+    if (users[userid]) {
+      delete users[userid];
+    }
+    firebase.database().ref(userid).update(null);
+  });
 
-    //var attachment = {
-      //type: 'template',
-      //payload: {
-        //template_type: 'generic',
-        //elements: [
-          //{
-            //title: title,
-            //image_url: image,
-            //default_action: {
-              //type: 'web_url', 
-              //url: link,
-            //},
-            //buttons: [
-              //{
-                //type: 'postback',
-                //title: 'Kult!',
-                //payload: 'like'
-              //}, {
-                //type: 'postback',
-                //title: 'Likte den ikke',
-                //payload: 'dislike'
-              //}
-            //]
-          //},
-        //]
-      //}
-    //};
-    //bot.reply(message, {attachment: attachment});
-  //});
+  controller.hears(['gi meg en artikkel'], 'message_received', function(bot, message) {
+    var index = Math.floor(Math.random() * articles.length);
+    var article = articles[index];
+    var userid = message.channel;
+    sendArticle(article, userid);
+  });
 
   controller.on('facebook_postback', function(bot, message) {
     if (message.payload == 'like') {
