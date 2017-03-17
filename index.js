@@ -166,9 +166,9 @@ function sendArticle(article) {
       }
     };
     if (article.image) {
-      attachment.image_url = article.image;
+      attachment.payload.elements[0].image_url = article.image;
     }
-    bot.say({ channel: userid, attachment: attachment });
+    bot.say({ channel: userid, attachments: [attachment] });
   });
 }
 
@@ -225,8 +225,31 @@ function getArticles() {
     });
 }
 
+function fetchUsers() {
+  firebase.database().ref().once('value')
+    .then(function (snapshot) {
+      if (snapshot.val()) {
+        snapshot.val().forEach(function (userid) {
+          if (!users[userid]) {
+            users[userid] = {};
+          }
+        });
+      }
+      return true;
+    })
+    .catch(function (err) {
+      console.error('Failed when fetching users:', err);
+    });
+}
+
 setInterval(function fetchArticles() {
-  getArticles();
+  fetchUsers()
+    .then(function () {
+      getArticles();
+    })
+    .catch(function (err) {
+      console.error('Something happened during update interval:', err);
+    });
 }, 10000);
 getArticles();
 
