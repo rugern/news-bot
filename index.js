@@ -226,7 +226,7 @@ function getArticles() {
 }
 
 function fetchUsers() {
-  firebase.database().ref().once('value')
+  return firebase.database().ref().once('value')
     .then(function (snapshot) {
       if (snapshot.val()) {
         snapshot.val().forEach(function (userid) {
