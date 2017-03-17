@@ -229,11 +229,7 @@ function fetchUsers() {
   return firebase.database().ref().once('value')
     .then(function (snapshot) {
       if (snapshot.val()) {
-        snapshot.val().forEach(function (userid) {
-          if (!users[userid]) {
-            users[userid] = {};
-          }
-        });
+        console.log(snapshot.val());
       }
       return true;
     })
