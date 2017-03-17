@@ -229,7 +229,7 @@ function initializeBot() {
           if (snapshot.val()) {
             users[userid] = snapshot.val();
           } else {
-            firebase.database().ref().push(userid);
+            firebase.database().ref(userid).set({ userid: userid });
             users[userid] = {};
           }
         })
