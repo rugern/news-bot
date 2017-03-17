@@ -168,7 +168,7 @@ function sendArticle(article) {
     if (article.image) {
       attachment.payload.elements[0].image_url = article.image;
     }
-    bot.say({ channel: userid, attachments: [attachment] });
+    bot.say({ channel: userid, attachment: attachment });
   });
 }
 
@@ -229,7 +229,11 @@ function fetchUsers() {
   return firebase.database().ref().once('value')
     .then(function (snapshot) {
       if (snapshot.val()) {
-        console.log(snapshot.val());
+        Object.keys(snapshot.val()).forEach(function(userid) {
+          if (!users[userid]) {
+            users[userid] = {};
+          }
+        });
       }
       return true;
     })
