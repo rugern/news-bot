@@ -305,7 +305,8 @@ function initializeBot() {
     if (users[userid]) {
       delete users[userid];
     }
-    firebase.database().ref(userid).update(null);
+    firebase.database().ref(userid).remove();
+    bot.reply(message, 'På gjensyn!');
   });
 
   controller.hears(['gi meg en artikkel'], 'message_received', function(bot, message) {
