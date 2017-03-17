@@ -136,9 +136,39 @@ function getTags(article) {
   return tags;
 }
 
-function pushArticle(article) {
+function sendArticle(article) {
   Object.keys(users).forEach(function (userid) {
-    bot.say({ text: 'ny artikkel', channel: userid });
+    var attachment = {
+      type: 'template',
+      payload: {
+        template_type: 'generic',
+        elements: [
+          {
+            title: article.title,
+            subtitle: article.leadText,
+            default_action: {
+              type: 'web_url', 
+              url: article.link,
+            },
+            buttons: [
+              {
+                type: 'postback',
+                title: 'Kult!',
+                payload: 'like'
+              }, {
+                type: 'postback',
+                title: 'Likte den ikke',
+                payload: 'dislike'
+              }
+            ]
+          },
+        ]
+      }
+    };
+    if (article.image) {
+      attachment.image_url = article.image;
+    }
+    bot.say({ channel: userid, attachment: attachment });
   });
 }
 
@@ -161,7 +191,7 @@ function storeArticles(data) {
 
     if (production) {
       sentArticles.push(acpid);
-      pushArticle(newArticle);
+      sendArticle(newArticle);
     }
   });
 
