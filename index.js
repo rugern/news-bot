@@ -175,6 +175,7 @@ function subscribe(bot, message) {
         callback: function (response, convo) {
           user.tags = cleanResponseList(response);
           endConversation(response, convo);
+          convo.next();
         }
       }
     ]);
@@ -197,6 +198,7 @@ function subscribe(bot, message) {
             });
             user.publications = publications;
             askTags(response, convo);
+            convo.next();
           }
         }
       ]);
