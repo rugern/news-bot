@@ -43,6 +43,19 @@ firebase.initializeApp({
   databaseURL: process.env.FIREBASE_DATABASE_URL,
 });
 
+function articleFilter(articles, user) {
+  return articles.filter(function (article) {
+    var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(article.domain) !== -1;
+    var wantedTags = !user.tags || user.tags.length === 0 || user.tags.reduce(function (result, tag) {
+      if (result) {
+        return result;
+      }
+      return article.tags.indexOf(tag) !== -1;
+    }, false);
+    return wantedPublication && wantedTags;
+  });
+}
+
 function fetchUsers() {
   return firebase.database().ref().once('value')
     .then(function (snapshot) {
@@ -208,10 +221,12 @@ function subscribe(bot, message) {
 }
 
 function sendRandomArticle(bot, message) {
-    var index = Math.floor(Math.random() * articles.length);
-    var article = articles[index];
-    var userid = message.channel;
-    sendArticle(article, userid);
+  var userid = message.channel;
+  var user = users[userid];
+  var wantedArticles = articleFilter(articles, user);
+  var index = Math.floor(Math.random() * wantedArticles.length);
+  var article = articles[index];
+  sendArticle(article, userid);
 }
 
 function unsubscribe(bot, message) {
@@ -280,24 +295,24 @@ function initializeBot() {
 
   controller.on('facebook_postback', function(bot, message) {
     switch (message.payload) {
-        case 'like':
-          bot.reply(message, 'Bra at du likte den :)');
-          break;
-        case 'dislike':
-          bot.reply(message, 'Okay, skal prøve å finne noe kulere neste gang!');
-          break;
-        case 'send_article':
-          sendRandomArticle(bot, message);
-          break;
-        case 'subscribe':
-          subscribe(bot, message);
-          break;
-        case 'unsubscribe':
-          unsubscribe(bot, message);
-          break;
-        default:
-          bot.reply(message, 'Beklager, det er noe rusk i maskineriet');
-          console.error('Unknown postback payload:', message.payload);
+    case 'like':
+      bot.reply(message, 'Bra at du likte den :)');
+      break;
+    case 'dislike':
+      bot.reply(message, 'Okay, skal prøve å finne noe kulere neste gang!');
+      break;
+    case 'send_article':
+      sendRandomArticle(bot, message);
+      break;
+    case 'subscribe':
+      subscribe(bot, message);
+      break;
+    case 'unsubscribe':
+      unsubscribe(bot, message);
+      break;
+    default:
+      bot.reply(message, 'Beklager, det er noe rusk i maskineriet');
+      console.error('Unknown postback payload:', message.payload);
     }
   });
 }
