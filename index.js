@@ -111,12 +111,10 @@ function sendArticle(article, userid) {
     attachment.payload.elements[0].image_url = article.image;
   }
 
-  Object.keys(receivers).forEach(function (user) {
-    console.log(article);
-    console.log(user);
-    console.log(subscribedArticle(article, user));
-    if (subscribedArticle(article, user)) {
-      bot.say({ channel: user, attachment: attachment });
+  Object.keys(receivers).forEach(function (receiverId) {
+    var receiver = receivers[receiverId];
+    if (subscribedArticle(article, receiver)) {
+      bot.say({ channel: receiverId, attachment: attachment });
     }
   });
 }
