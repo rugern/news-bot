@@ -149,20 +149,25 @@ function subscribe(bot, message) {
     users[userid] = user;
     firebase.database().ref(userid).set(user)
       .then(function () {
-        convo.say('Da vil du få artikler fra ' + user.publications + ' med tema ' + user.tags);
-        convo.next();
+        var reply = 'Da vil du få artikler fra ';
+        reply += user.publications.length > 0 ? user.publications.join(', ') : 'alle aviser ';
+        reply += ' med ';
+        reply += user.tags.length > 0 ? 'temaene ' + user.tags.join(', ') : 'alle tema';
+
+        convo.say(reply);
+        convo.stop();
       })
       .catch(function (error) {
         convo.say('Oops, her er det noe rusk i maskineriet. Vennligst prøv igjen');
         console.log(error);
-        convo.next();
+        convo.stop();
       });
   };
 
   var askTags = function (response, convo) {
-    convo.ask('Er det noen tema du ønsker å følge?', [
+    convo.ask('Er det noen tema du ønsker å følge? Skriv \'nei\' for å gå videre uten å velge', [
       {
-        pattern: 'ingen',
+        pattern: 'nei',
         callback: endConversation
       },
       {
@@ -170,7 +175,6 @@ function subscribe(bot, message) {
         callback: function (response, convo) {
           user.tags = cleanResponseList(response);
           endConversation(response, convo);
-          convo.next();
         }
       }
     ]);
@@ -178,25 +182,24 @@ function subscribe(bot, message) {
 
   var askPublications = function (response, convo) {
     convo.say('Hvilke aviser vil du abonnere på?');
-    convo.say('Du kan skrive inn aviser fra listen under, eller skrive \'alle\' for å abonnere på alle aviser');
-
-    convo.ask(constants.amediaPublications.join(', '), [
-      {
-        pattern: 'alle',
-        callback: askTags
-      },
-      { 
-        default: true,
-        callback: function (response, convo) {
-          var publications = cleanResponseList(response).filter(function (domain) {
-            return constants.amediaPublications.indexOf(domain) !== -1;
-          });
-          user.publications = publications;
-          askTags(response, convo);
-          convo.next();
+    convo.say(['Skriv inn navnet på avisene du ønsker slik det fremkommer i',
+      'URL-en, for eksempel \'glomdalen, aasavis, ba\', eller skriv \'alle\'',
+      'for å abonnere på alle aviser'].join(' '), [
+        {
+          pattern: 'alle',
+          callback: askTags
+        },
+        { 
+          default: true,
+          callback: function (response, convo) {
+            var publications = cleanResponseList(response).filter(function (domain) {
+              return constants.amediaPublications.indexOf(domain) !== -1;
+            });
+            user.publications = publications;
+            askTags(response, convo);
+          }
         }
-      }
-    ]);
+      ]);
   };
 
   bot.startConversation(message, askPublications);
