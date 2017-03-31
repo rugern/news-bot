@@ -44,6 +44,9 @@ firebase.initializeApp({
 });
 
 function subscribedArticle(article, user) {
+  if (!user) {
+    return false;
+  }
   var publication = article.domain.split('.')[1];
   var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(publication) !== -1;
   var wantedTags = !user.tags || user.tags.length === 0 || user.tags.reduce(function (result, tag) {
@@ -70,7 +73,6 @@ function fetchUsers() {
       console.error('Failed when fetching users:', err);
     });
 }
-fetchUsers();
 
 function sendArticle(article, userid) {
   var attachment = {
@@ -230,7 +232,7 @@ function sendRandomArticle(bot, message) {
     var article = subscribedArticles[index];
     sendArticle(article, userid);
   } else {
-    bot.reply('Beklager, men fant ingen artikler som passet ditt filter');
+    bot.reply(message, 'Beklager, men fant ingen artikler som passet ditt filter');
   }
 }
 
@@ -322,8 +324,10 @@ function initializeBot() {
   });
 }
 
-Observable.interval(10000)
-  .startWith(0)
+Observable.defer(fetchUsers)
+  .flatMap(function () {
+    return Observable.interval(10000).startWith(0);
+  })
   .flatMap(function () {
     return Observable.defer(article.getArticles);
   })
