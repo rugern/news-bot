@@ -43,18 +43,16 @@ firebase.initializeApp({
   databaseURL: process.env.FIREBASE_DATABASE_URL,
 });
 
-function articleFilter(articles, user) {
-  return articles.filter(function (article) {
-    var publication = article.domain.split('.')[1];
-    var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(publication) !== -1;
-    var wantedTags = !user.tags || user.tags.length === 0 || user.tags.reduce(function (result, tag) {
-      if (result) {
-        return result;
-      }
-      return article.tags.indexOf(tag) !== -1;
-    }, false);
-    return wantedPublication && wantedTags;
-  });
+function subscribedArticle(article, user) {
+  var publication = article.domain.split('.')[1];
+  var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(publication) !== -1;
+  var wantedTags = !user.tags || user.tags.length === 0 || user.tags.reduce(function (result, tag) {
+    if (result) {
+      return result;
+    }
+    return article.tags.indexOf(tag) !== -1;
+  }, false);
+  return wantedPublication && wantedTags;
 }
 
 function fetchUsers() {
@@ -76,6 +74,7 @@ function fetchUsers() {
 fetchUsers();
 
 function sendArticle(article, userid) {
+  console.log('kom til sendArticle');
   var attachment = {
     type: 'template',
     payload: {
@@ -112,17 +111,10 @@ function sendArticle(article, userid) {
     return;
   }
 
-  Object.keys(users).filter(function (user) {
-    var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(article.domain) !== -1;
-    var wantedTags = !user.tags || user.tags.length === 0 || user.tags.reduce(function (result, tag) {
-      if (result) {
-        return result;
-      }
-      return article.tags.indexOf(tag) !== -1;
-    }, false);
-    return wantedPublication && wantedTags;
-  }).forEach(function (user) {
-    bot.say({ channel: user, attachment: attachment });
+  Object.keys(users).forEach(function (user) {
+    if (subscribedArticle(article, user)) {
+      bot.say({ channel: user, attachment: attachment });
+    }
   });
 }
 
@@ -230,10 +222,14 @@ function subscribe(bot, message) {
 function sendRandomArticle(bot, message) {
   var userid = message.channel;
   var user = users[userid];
-  var wantedArticles = articleFilter(articles, user);
-  if (wantedArticles.length > 0) {
-    var index = Math.floor(Math.random() * wantedArticles.length);
-    var article = articles[index];
+
+  var subscribedArticles = articles.filter(function (article) {
+    return subscribedArticle(articles, user);
+  });
+
+  if (subscribedArticles.length > 0) {
+    var index = Math.floor(Math.random() * subscribedArticles.length);
+    var article = subscribedArticles[index];
     sendArticle(article, userid);
   } else {
     bot.reply('Beklager, men fant ingen artikler som passet ditt filter');
@@ -342,6 +338,7 @@ Observable.interval(10000)
   .map(article.createArticle)
   .map(storeArticle)
   .filter(function () {
+    console.log(production);
     return production;
   })
   .subscribe(sendArticle(article), function (error) {
