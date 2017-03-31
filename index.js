@@ -6,7 +6,7 @@ var Observable = require('rxjs/Rx').Observable;
 
 var article = require('./lib/article');
 
-var production = process.env.NODE_ENV === 'production';
+var production = process.env.NODE_ENV !== 'development';
 var controller;
 var bot;
 var users = {};
@@ -151,6 +151,11 @@ function subscribe(bot, message) {
   };
   var askPublications = function (response, convo) {
     convo.ask('Hvilke aviser vil du abonnere på?', function (response, convo) {
+      var publications = response.text.split(',').map(function (domain) {
+        return domain.trim();
+      }).filter(function (domain) {
+        return constants.amediaDomains.indexOf(domain) !== -1;
+      });
       user.publications.push(response.text);
       askTags(response, convo);
       convo.next();
@@ -189,30 +194,34 @@ function initializeBot() {
       'composer_input_disabled':true,
       'call_to_actions':[
         {
-          'title':'Mine kommandoer',
-          'type':'nested',
-          'call_to_actions':[
-            {
-              'title':'Hei',
-              'type':'postback',
-              'payload':'Hei'
-            },
-            {
-              'title':'Abonner',
-              'type':'postback',
-              'payload':'Start et abonnement'
-            }
-          ]
+          'title':'Hei',
+          'type':'postback',
+          'payload':'hi'
+        },
+        {
+          'title':'Gi meg en artikkel',
+          'type':'postback',
+          'payload':'send_article'
+        },
+        {
+          'title':'Abonner',
+          'type':'postback',
+          'payload':'subscribe'
+        },
+        {
+          'title':'Avslutt abonnement',
+          'type':'postback',
+          'payload':'unsubscribe'
         },
       ]
     },
   ]);
 
-  controller.hears(['hei'], 'message_received', function(bot, message) {
+  controller.hears(['hei', 'Hei'], 'message_received', function(bot, message) {
     bot.reply(message, 'Heisann!');
   });
 
-  controller.hears(['abonner'], 'message_received', function(bot, message) {
+  controller.hears(['abonner', 'Abonner'], 'message_received', function(bot, message) {
     subscribe(bot, message)
       .then(function () {
         bot.reply(message, 'Du har nå abonnert! Skriv \'avslutt abo\' for å avslutte abonnementet');
@@ -223,7 +232,7 @@ function initializeBot() {
       });
   });
 
-  controller.hears(['avslutt abo'], 'message_received', function (bot, message) {
+  controller.hears(['avslutt abo', 'Avslutt abonnement'], 'message_received', function (bot, message) {
     var userid = message.channel;
     if (users[userid]) {
       delete users[userid];
@@ -232,7 +241,7 @@ function initializeBot() {
     bot.reply(message, 'Du har nå avsluttet abonnementet');
   });
 
-  controller.hears(['gi meg en artikkel'], 'message_received', function(bot, message) {
+  controller.hears(['gi meg en artikkel', 'Gi meg en artikkel'], 'message_received', function(bot, message) {
     var index = Math.floor(Math.random() * articles.length);
     var article = articles[index];
     var userid = message.channel;
