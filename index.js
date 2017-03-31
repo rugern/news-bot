@@ -5,6 +5,7 @@ var firebase = require('firebase');
 var Observable = require('rxjs/Rx').Observable;
 
 var article = require('./lib/article');
+var constants = require('./lib/constants');
 
 var production = process.env.NODE_ENV !== 'development';
 var controller;
