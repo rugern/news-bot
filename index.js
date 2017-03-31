@@ -130,6 +130,7 @@ function subscribe(bot, message) {
 
   var endConversation = function (response, convo) {
     users[userid] = user;
+    console.log(user);
     firebase.database().ref(userid).set(user)
       .then(function () {
         convo.say('Da vil du få artikler fra ' + user.publications + ' med tema ' + user.tags);
