@@ -182,7 +182,7 @@ function subscribe(bot, message) {
       }
     };
 
-    convo.ask(attachment, function (response, convo) {
+    convo.ask({ attachment: attachment }, function (response, convo) {
       console.log(response);
       var publications = response.text.split(',').map(function (domain) {
         return domain.trim();
@@ -196,6 +196,22 @@ function subscribe(bot, message) {
   };
 
   bot.startConversation(message, askPublications);
+}
+
+function sendRandomArticle(bot, message) {
+    var index = Math.floor(Math.random() * articles.length);
+    var article = articles[index];
+    var userid = message.channel;
+    sendArticle(article, userid);
+}
+
+function unsubscribe(bot, message) {
+  var userid = message.channel;
+  if (users[userid]) {
+    delete users[userid];
+  }
+  firebase.database().ref(userid).remove();
+  bot.reply(message, 'Du har nå avsluttet abonnementet');
 }
 
 function initializeBot() {
@@ -249,38 +265,30 @@ function initializeBot() {
     bot.reply(message, 'Heisann!');
   });
 
-  controller.hears(['abonner', 'Abonner'], 'message_received', function(bot, message) {
-    subscribe(bot, message)
-      .then(function () {
-        bot.reply(message, 'Du har nå abonnert! Skriv \'avslutt abo\' for å avslutte abonnementet');
-      })
-      .catch(function (error) {
-        console.error(error);
-        bot.reply(message, 'Beklager, men noe gikk feil med abonneringen :/');
-      });
-  });
-
-  controller.hears(['avslutt abo', 'Avslutt abonnement'], 'message_received', function (bot, message) {
-    var userid = message.channel;
-    if (users[userid]) {
-      delete users[userid];
-    }
-    firebase.database().ref(userid).remove();
-    bot.reply(message, 'Du har nå avsluttet abonnementet');
-  });
-
-  controller.hears(['gi meg en artikkel', 'Gi meg en artikkel'], 'message_received', function(bot, message) {
-    var index = Math.floor(Math.random() * articles.length);
-    var article = articles[index];
-    var userid = message.channel;
-    sendArticle(article, userid);
-  });
+  controller.hears(['abonner', 'Abonner'], 'message_received', subscribe);
+  controller.hears(['avslutt abo', 'Avslutt abonnement'], 'message_received', unsubscribe);
+  controller.hears(['gi meg en artikkel', 'Gi meg en artikkel'], 'message_received', sendRandomArticle);
 
   controller.on('facebook_postback', function(bot, message) {
-    if (message.payload == 'like') {
-      bot.reply(message, 'Bra at du likte den :)');
-    } else if (message.payload === 'dislike') {
-      bot.reply(message, 'Okay, skal prøve å finne noe kulere neste gang!');
+    switch (message.payload) {
+        case 'like':
+          bot.reply(message, 'Bra at du likte den :)');
+          break;
+        case 'dislike':
+          bot.reply(message, 'Okay, skal prøve å finne noe kulere neste gang!');
+          break;
+        case 'send_article':
+          sendRandomArticle(bot, message);
+          break;
+        case 'subscribe':
+          subscribe(bot, message);
+          break;
+        case 'unsubscribe':
+          unsubscribe(bot, message);
+          break;
+        default:
+          bot.reply(message, 'Beklager, det er noe rusk i maskineriet');
+          console.error('Unknown postback payload:', message.payload);
     }
   });
 }
