@@ -130,7 +130,6 @@ function subscribe(bot, message) {
 
   var endConversation = function (response, convo) {
     users[userid] = user;
-    console.log(user);
     firebase.database().ref(userid).set(user)
       .then(function () {
         convo.say('Da vil du få artikler fra ' + user.publications + ' med tema ' + user.tags);
@@ -145,14 +144,14 @@ function subscribe(bot, message) {
 
   var askTags = function (response, convo) {
     convo.ask('Er det noen spesielle tema du ønsker å følge?', function (response, convo) {
-      user.tags.push(response);
+      user.tags.push(response.text);
       endConversation(response, convo);
       convo.next();
     });
   };
   var askPublications = function (response, convo) {
     convo.ask('Hvilke aviser vil du abonnere på?', function (response, convo) {
-      user.publications.push(response);
+      user.publications.push(response.text);
       askTags(response, convo);
       convo.next();
     });
