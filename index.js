@@ -127,6 +127,16 @@ function storeArticle(article) {
   return article;
 }
 
+function cleanResponseList(responses) {
+  return responses.text.split(' ').map(function (response) {
+    response = response.trim();
+    if (response.indexOf(',') !== -1) {
+      response = response.slice(0, response.indexOf(','));
+    }
+    return response;
+  });
+}
+
 function subscribe(bot, message) {
   var userid = message.channel;
   var user = {
@@ -150,49 +160,43 @@ function subscribe(bot, message) {
   };
 
   var askTags = function (response, convo) {
-    convo.ask('Er det noen spesielle tema du ønsker å følge?', function (response, convo) {
-      user.tags.push(response.text);
-      endConversation(response, convo);
-      convo.next();
-    });
+    convo.ask('Er det noen tema du ønsker å følge?', [
+      {
+        pattern: 'ingen',
+        callback: endConversation
+      },
+      {
+        default: true,
+        callback: function (response, convo) {
+          user.tags = cleanResponseList(response);
+          endConversation(response, convo);
+          convo.next();
+        }
+      }
+    ]);
   };
+
   var askPublications = function (response, convo) {
     convo.say('Hvilke aviser vil du abonnere på?');
-    var attachment = {
-      type: 'template',
-      payload: {
-        template_type: 'generic',
-        elements: [
-          {
-            title: 'Skriv inn navnene, eller trykk på en av knappene',
-            subtitle: constants.amediaPublications.join(',\n'),
-            buttons: [
-              {
-                type: 'postback',
-                title: 'Alle',
-                payload: 'all'
-              }, {
-                type: 'postback',
-                title: 'Ingen',
-                payload: 'none'
-              }
-            ]
-          },
-        ]
-      }
-    };
+    convo.say('Du kan skrive inn aviser fra listen under, eller skrive \'alle\' for å abonnere på alle aviser');
 
-    convo.ask({ attachment: attachment }, function (response, convo) {
-      console.log(response);
-      var publications = response.text.split(',').map(function (domain) {
-        return domain.trim();
-      }).filter(function (domain) {
-        return constants.amediaPublications.indexOf(domain) !== -1;
-      });
-      user.publications.push(response.text);
-      askTags(response, convo);
-      convo.next();
-    });
+    convo.ask(constants.amediaPublications.join(', '), [
+      {
+        pattern: 'alle',
+        callback: askTags
+      },
+      { 
+        default: true,
+        callback: function (response, convo) {
+          var publications = cleanResponseList(response).filter(function (domain) {
+            return constants.amediaPublications.indexOf(domain) !== -1;
+          });
+          user.publications = publications;
+          askTags(response, convo);
+          convo.next();
+        }
+      }
+    ]);
   };
 
   bot.startConversation(message, askPublications);
