@@ -1,90 +1,14 @@
+'use strict';
+
 var Botkit = require('botkit');
-var queryString = require('query-string');
-var fetch = require('node-fetch');
 var firebase = require('firebase');
+var Observable = require('rxjs/Rx').Observable;
+
+var article = require('./lib/article');
 
 var production = process.env.NODE_ENV === 'production';
 var controller;
 var bot;
-
-var amediaDomains = [
-  'www.aasavis.no',
-  'www.amta.no',
-  'www.an.no',
-  'www.auraavis.no',
-  'www.austagderblad.no',
-  'www.avisa-valdres.no',
-  'www.avisnavn.no',
-  'www.ba.no',
-  'www.blv.no',
-  'www.budstikka.no',
-  'www.bygdeposten.no',
-  'www.dt.no',
-  'www.eikerbladet.no',
-  'www.enebakkavis.no',
-  'www.f-b.no',
-  'www.firda.no',
-  'www.firdaposten.no',
-  'www.fremover.no',
-  'www.gd.no',
-  'www.gjengangeren.no',
-  'www.glomdalen.no',
-  'www.h-avis.no',
-  'www.ha-halden.no',
-  'www.hadeland.no',
-  'www.hamar-dagblad.no',
-  'www.hardanger-folkeblad.no',
-  'www.hblad.no',
-  'www.helg.no',
-  'www.ialta.no',
-  'www.ifinnmark.no',
-  'www.indre.no',
-  'www.jarlsbergavis.no',
-  'www.kv.no',
-  'www.kvinnheringen.no',
-  'www.laagendalsposten.no',
-  'www.lierposten.no',
-  'www.lofot-tidende.no',
-  'www.lofotposten.no',
-  'www.moss-avis.no',
-  'www.noblad.no',
-  'www.nord24.no',
-  'www.norddalen.no',
-  'www.nordhordland.no',
-  'www.nordlys.no',
-  'www.oa.no',
-  'www.oblad.no',
-  'www.op.no',
-  'www.ostlendingen.no',
-  'www.oyene.no',
-  'www.pd.no',
-  'www.polkaposten.no',
-  'www.r-a.no',
-  'www.rablad.no',
-  'www.ranablad.no',
-  'www.rb.no',
-  'www.retten.no',
-  'www.rha.no',
-  'www.ringblad.no',
-  'www.ringsaker-blad.no',
-  'www.sa.no',
-  'www.salsaposten.no',
-  'www.sandeavis.no',
-  'www.sb.no',
-  'www.siste.no',
-  'www.smaalenene.no',
-  'www.svelviksposten.no',
-  'www.ta.no',
-  'www.tb.no',
-  'www.telen.no',
-  'www.tk.no',
-  'www.tvedestrandsposten.no',
-  'www.vest24.no',
-  'www.vestbyavis.no',
-  'www.vestviken24.no',
-];
-
-var base = 'https://bed.api.no/api/acpcomposer/v1.1/search/content';
 var users = {};
 var articles = [];
 var acpids = [];
@@ -136,25 +60,6 @@ function fetchUsers() {
 }
 fetchUsers();
 
-function getImage(article) {
-  var relations = article._embedded.relations;
-  if (relations && relations.length > 0) {
-    var versions = relations[0].fields.versions;
-    return versions && versions.large ? versions.large.url : undefined;
-  }
-  return undefined;
-}
-
-function getTags(article) {
-  var tags = [];
-  if (article.tags) {
-    article.tags.forEach(function (tag) {
-      tags.push(tag.displayName);
-    });
-  }
-  return tags;
-}
-
 function sendArticle(article, userid) {
   var attachment = {
     type: 'template',
@@ -197,68 +102,70 @@ function sendArticle(article, userid) {
   });
 }
 
-function storeArticles(data) {
-  data.forEach(function (article) {
-    var domain = article._links.publication.title;
-    var acpid = article.fields.id;
+function storeArticle(article) {
+  if (acpids.indexOf(article.acpid) !== -1) {
+    return;
+  }
 
-    if (acpids.indexOf(acpid) !== -1) {
-      return;
-    }
-
-    var newArticle = {
-      domain: domain,
-      acpid: acpid,
-      title: article.title,
-      leadText: article.leadText,
-      link: domain + article.fields.relativeUrl,
-      image: getImage(article),
-      tags: getTags(article),
-    };
-
-    if (production) {
-      articles.push(newArticle);
-      acpids.push(acpid);
-      sendArticle(newArticle);
-    }
-  });
-
+  articles.push(article);
+  acpids.push(article.acpid);
   while (articles.length > 100) {
     delete acpids[0];
     delete articles[0];
   }
+
+  return article;
 }
 
-function getArticles() {
-  var queryData = {
-    offset: 0,
-    limit: 10,
-    includeCrossPublished: true,
-    sort: 'lastPublishedDate',
-    types: ['story', 'feature'],
-    extended: false,
-    publicationDomain: amediaDomains,
-  };
-
-  var query = queryString.stringify(queryData);
-  var requestUrl = base + '?' + query;
-  fetch(requestUrl)
-    .then(function (result) {
-      return result.json();
-    })
-    .then(function (data) {
-      storeArticles(data._embedded);
-    })
-    .catch(function (err) {
-      console.error(err);
+function addUser(user) {
+  var userid = user.id;
+  users[userid] = user;
+  return firebase.database().ref(userid).once('value')
+    .then(function (snapshot) {
+      if (!snapshot.val()) {
+        firebase.database().ref(userid).set({ userid: userid });
+      }
     });
 }
 
+function subscribe(bot, message) {
+  var userid = message.channel;
+  var user = {
+    id: userid,
+    publications: [],
+    tags: [],
+  };
 
-setInterval(function fetchArticles() {
-  getArticles();
-}, 10000);
-getArticles();
+  var endConversation = function (response, convo) {
+    addUser(user)
+      .then(function () {
+        convo.say('Da vil du få artikler fra ' + user.publications + ' med tema ' + user.tags);
+        convo.next();
+      })
+      .catch(function (error) {
+        convo.say('Oops, her er det noe rusk i maskineriet. Vennligst prøv igjen');
+        console.log(error);
+        convo.next();
+      });
+  };
+
+  var askTags = function (response, convo) {
+    convo.ask('Er det noen spesielle tema du ønsker å følge?', function (response, convo) {
+      user.tags.push(response);
+      endConversation(response, convo);
+      convo.next();
+    });
+  };
+  var askPublications = function (response, convo) {
+    convo.ask('Hvilke aviser vil du abonnere på?', function (response, convo) {
+      user.publications.push(response);
+      askTags(response, convo);
+      convo.next();
+    });
+  };
+
+  bot.startConversation(message, askPublications);
+}
 
 function initializeBot() {
   controller = Botkit.facebookbot({
@@ -281,32 +188,55 @@ function initializeBot() {
     });
   });
 
-  controller.hears(['hallo', 'hei'], 'message_received', function(bot, message) {
-    var userid = message.channel;
-    if (!users[userid]) {
-      firebase.database().ref(userid).once('value')
-        .then(function (snapshot) {
-          if (snapshot.val()) {
-            users[userid] = snapshot.val();
-          } else {
-            firebase.database().ref(userid).set({ userid: userid });
-            users[userid] = {};
-          }
-        })
-        .catch(function (err) {
-          console.error('Firebase error:', err);
-        });
-    }
+  controller.api.messenger_profile.greeting('Hei! Jeg er en bot');
+  controller.api.messenger_profile.get_started('Kom igang');
+  controller.api.messenger_profile.menu([
+    {
+      'locale':'default',
+      'composer_input_disabled':true,
+      'call_to_actions':[
+        {
+          'title':'Mine kommandoer',
+          'type':'nested',
+          'call_to_actions':[
+            {
+              'title':'Hei',
+              'type':'postback',
+              'payload':'Hei'
+            },
+            {
+              'title':'Abonner',
+              'type':'postback',
+              'payload':'Start et abonnement'
+            }
+          ]
+        },
+      ]
+    },
+  ]);
+
+  controller.hears(['hei'], 'message_received', function(bot, message) {
     bot.reply(message, 'Heisann!');
   });
 
-  controller.hears(['hadet'], 'message_received', function (bot, message) {
+  controller.hears(['abonner'], 'message_received', function(bot, message) {
+    subscribe(bot, message)
+      .then(function () {
+        bot.reply(message, 'Du har nå abonnert! Skriv \'avslutt abo\' for å avslutte abonnementet');
+      })
+      .catch(function (error) {
+        console.error(error);
+        bot.reply(message, 'Beklager, men noe gikk feil med abonneringen :/');
+      });
+  });
+
+  controller.hears(['avslutt abo'], 'message_received', function (bot, message) {
     var userid = message.channel;
     if (users[userid]) {
       delete users[userid];
     }
     firebase.database().ref(userid).remove();
-    bot.reply(message, 'På gjensyn!');
+    bot.reply(message, 'Du har nå avsluttet abonnementet');
   });
 
   controller.hears(['gi meg en artikkel'], 'message_received', function(bot, message) {
@@ -324,6 +254,26 @@ function initializeBot() {
     }
   });
 }
+
+Observable.interval(10000)
+  .startWith(0)
+  .flatMap(function () {
+    return Observable.defer(article.getArticles);
+  })
+  .map(function (rawData) {
+    return rawData._embedded;
+  })
+  .flatMap(function (rawArticles) {
+    return Observable.from(rawArticles);
+  })
+  .map(article.createArticle)
+  .map(storeArticle)
+  .filter(function () {
+    return production;
+  })
+  .subscribe(sendArticle(article), function (error) {
+    console.log(error);
+  });
 
 if (production) {
   initializeBot();
