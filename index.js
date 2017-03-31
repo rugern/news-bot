@@ -19,22 +19,22 @@ if (!production) {
 }
 
 if (!process.env.PAGE_TOKEN) {
-  console.log('Error: Specify PAGE_TOKEN in environment');
+  console.error('Error: Specify PAGE_TOKEN in environment');
   process.exit(1);
 }
 
 if (!process.env.VERIFY_TOKEN) {
-  console.log('Error: Specify VERIFY_TOKEN in environment');
+  console.error('Error: Specify VERIFY_TOKEN in environment');
   process.exit(1);
 }
 
 if (!process.env.FIREBASE_API_KEY) {
-  console.log('Error: Specify FIREBASE_API_KEY in environment');
+  console.error('Error: Specify FIREBASE_API_KEY in environment');
   process.exit(1);
 }
 
 if (!process.env.FIREBASE_DATABASE_URL) {
-  console.log('Error: Specify FIREBASE_DATABASE_URL in environment');
+  console.error('Error: Specify FIREBASE_DATABASE_URL in environment');
   process.exit(1);
 }
 
@@ -59,10 +59,9 @@ function fetchUsers() {
   return firebase.database().ref().once('value')
     .then(function (snapshot) {
       if (snapshot.val()) {
-        Object.keys(snapshot.val()).forEach(function(userid) {
-          if (!users[userid]) {
-            users[userid] = {};
-          }
+        var data = snapshot.val();
+        Object.keys(data).forEach(function(userid) {
+          users[userid] = data[userid];
         });
       }
       return true;
@@ -74,7 +73,6 @@ function fetchUsers() {
 fetchUsers();
 
 function sendArticle(article, userid) {
-  console.log('Artikkeldomene:', article.domain);
   var attachment = {
     type: 'template',
     payload: {
@@ -112,8 +110,6 @@ function sendArticle(article, userid) {
   }
 
   Object.keys(users).forEach(function (user) {
-    console.log(article);
-    console.log(user);
     if (subscribedArticle(article, user)) {
       bot.say({ channel: user, attachment: attachment });
     }
@@ -167,7 +163,7 @@ function subscribe(bot, message) {
       })
       .catch(function (error) {
         convo.say('Oops, her er det noe rusk i maskineriet. Vennligst prøv igjen');
-        console.log(error);
+        console.error(error);
         convo.stop();
       });
   };
@@ -229,8 +225,6 @@ function sendRandomArticle(bot, message) {
     return subscribedArticle(article, user);
   });
 
-  console.log(user);
-  console.log(subscribedArticles);
   if (subscribedArticles.length > 0) {
     var index = Math.floor(Math.random() * subscribedArticles.length);
     var article = subscribedArticles[index];
@@ -345,7 +339,7 @@ Observable.interval(10000)
     return article && production;
   })
   .subscribe(sendArticle, function (error) {
-    console.log(error);
+    console.error(error);
   });
 
 if (production) {
