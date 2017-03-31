@@ -45,7 +45,8 @@ firebase.initializeApp({
 
 function articleFilter(articles, user) {
   return articles.filter(function (article) {
-    var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(article.domain) !== -1;
+    var publication = article.domain.split('.')[1];
+    var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(publication) !== -1;
     var wantedTags = !user.tags || user.tags.length === 0 || user.tags.reduce(function (result, tag) {
       if (result) {
         return result;
@@ -163,7 +164,7 @@ function subscribe(bot, message) {
     firebase.database().ref(userid).set(user)
       .then(function () {
         var reply = 'Da vil du få artikler fra ';
-        reply += user.publications.length > 0 ? user.publications.join(', ') : 'alle aviser ';
+        reply += user.publications.length > 0 ? user.publications.join(', ') : 'alle aviser';
         reply += ' med ';
         reply += user.tags.length > 0 ? 'temaene ' + user.tags.join(', ') : 'alle tema';
 
@@ -230,9 +231,13 @@ function sendRandomArticle(bot, message) {
   var userid = message.channel;
   var user = users[userid];
   var wantedArticles = articleFilter(articles, user);
-  var index = Math.floor(Math.random() * wantedArticles.length);
-  var article = articles[index];
-  sendArticle(article, userid);
+  if (wantedArticles.length > 0) {
+    var index = Math.floor(Math.random() * wantedArticles.length);
+    var article = articles[index];
+    sendArticle(article, userid);
+  } else {
+    bot.reply('Beklager, men fant ingen artikler som passet ditt filter');
+  }
 }
 
 function unsubscribe(bot, message) {
