@@ -74,7 +74,7 @@ function fetchUsers() {
 fetchUsers();
 
 function sendArticle(article, userid) {
-  console.log('kom til sendArticle');
+  console.log('Artikkeldomene:', article.domain);
   var attachment = {
     type: 'template',
     payload: {
@@ -224,7 +224,7 @@ function sendRandomArticle(bot, message) {
   var user = users[userid];
 
   var subscribedArticles = articles.filter(function (article) {
-    return subscribedArticle(articles, user);
+    return subscribedArticle(article, user);
   });
 
   if (subscribedArticles.length > 0) {
@@ -338,10 +338,9 @@ Observable.interval(10000)
   .map(article.createArticle)
   .map(storeArticle)
   .filter(function () {
-    console.log(production);
     return production;
   })
-  .subscribe(sendArticle(article), function (error) {
+  .subscribe(sendArticle, function (error) {
     console.log(error);
   });
 
