@@ -117,15 +117,7 @@ function storeArticle(article) {
   return article;
 }
 
-function addUser(user) {
-  var userid = user.id;
-  users[userid] = user;
-  return firebase.database().ref(userid).once('value')
-    .then(function (snapshot) {
-      if (!snapshot.val()) {
-        firebase.database().ref(userid).set({ userid: userid });
-      }
-    });
+function setUser(user) {
 }
 
 function subscribe(bot, message) {
@@ -137,7 +129,8 @@ function subscribe(bot, message) {
   };
 
   var endConversation = function (response, convo) {
-    addUser(user)
+    users[user.id] = user;
+    firebase.database().ref(user.id).set(user)
       .then(function () {
         convo.say('Da vil du få artikler fra ' + user.publications + ' med tema ' + user.tags);
         convo.next();
