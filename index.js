@@ -97,7 +97,16 @@ function sendArticle(article, userid) {
     return;
   }
 
-  Object.keys(users).forEach(function (user) {
+  Object.keys(users).filter(function (user) {
+    var wantedPublication = user.publications.length === 0 || user.publications.indexOf(article.domain) !== -1;
+    var wantedTags = user.tags.length === 0 || user.tags.reduce(function (result, tag) {
+      if (result) {
+        return result;
+      }
+      return article.tags.indexOf(tag) !== -1;
+    }, false);
+    return wantedPublication && wantedTags;
+  }).forEach(function (user) {
     bot.say({ channel: user, attachment: attachment });
   });
 }
@@ -115,9 +124,6 @@ function storeArticle(article) {
   }
 
   return article;
-}
-
-function setUser(user) {
 }
 
 function subscribe(bot, message) {
@@ -150,11 +156,37 @@ function subscribe(bot, message) {
     });
   };
   var askPublications = function (response, convo) {
-    convo.ask('Hvilke aviser vil du abonnere på?', function (response, convo) {
+    convo.say('Hvilke aviser vil du abonnere på?');
+    var attachment = {
+      type: 'template',
+      payload: {
+        template_type: 'generic',
+        elements: [
+          {
+            title: 'Skriv inn navnene, eller trykk på en av knappene',
+            subtitle: constants.amediaPublications.join(',\n'),
+            buttons: [
+              {
+                type: 'postback',
+                title: 'Alle',
+                payload: 'all'
+              }, {
+                type: 'postback',
+                title: 'Ingen',
+                payload: 'none'
+              }
+            ]
+          },
+        ]
+      }
+    };
+
+    convo.ask(attachment, function (response, convo) {
+      console.log(response);
       var publications = response.text.split(',').map(function (domain) {
         return domain.trim();
       }).filter(function (domain) {
-        return constants.amediaDomains.indexOf(domain) !== -1;
+        return constants.amediaPublications.indexOf(domain) !== -1;
       });
       user.publications.push(response.text);
       askTags(response, convo);
@@ -193,11 +225,6 @@ function initializeBot() {
       'locale':'default',
       'composer_input_disabled':true,
       'call_to_actions':[
-        {
-          'title':'Hei',
-          'type':'postback',
-          'payload':'hi'
-        },
         {
           'title':'Gi meg en artikkel',
           'type':'postback',
