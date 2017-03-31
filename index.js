@@ -99,8 +99,8 @@ function sendArticle(article, userid) {
   }
 
   Object.keys(users).filter(function (user) {
-    var wantedPublication = user.publications.length === 0 || user.publications.indexOf(article.domain) !== -1;
-    var wantedTags = user.tags.length === 0 || user.tags.reduce(function (result, tag) {
+    var wantedPublication = !user.publications || user.publications.length === 0 || user.publications.indexOf(article.domain) !== -1;
+    var wantedTags = !user.tags || user.tags.length === 0 || user.tags.reduce(function (result, tag) {
       if (result) {
         return result;
       }
@@ -155,7 +155,7 @@ function subscribe(bot, message) {
         reply += user.tags.length > 0 ? 'temaene ' + user.tags.join(', ') : 'alle tema';
 
         convo.say(reply);
-        convo.stop();
+        convo.next();
       })
       .catch(function (error) {
         convo.say('Oops, her er det noe rusk i maskineriet. Vennligst prøv igjen');
