@@ -77,7 +77,8 @@ function fetchUsers() {
 function sendArticle(article, userid) {
   var receivers = users;
   if (userid) {
-    receivers = [users[userid]];
+    receivers = {};
+    receivers[userid] = users[userid];
   }
 
   var attachment = {
