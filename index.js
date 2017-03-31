@@ -181,7 +181,10 @@ function subscribe(bot, message) {
     convo.ask('Er det noen tema du ønsker å følge? Skriv \'nei\' for å gå videre uten å velge', [
       {
         pattern: 'nei',
-        callback: endConversation
+        callback: function (response, convo) {
+          endConversation(response, convo);
+          convo.next();
+        }
       },
       {
         default: true,
@@ -201,7 +204,10 @@ function subscribe(bot, message) {
       'for å abonnere på alle aviser'].join(' '), [
         {
           pattern: 'alle',
-          callback: askTags
+          callback: function (response, convo) {
+            askTags(response, convo);
+            convo.next();
+          }
         },
         { 
           default: true,
