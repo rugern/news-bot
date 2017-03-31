@@ -183,7 +183,7 @@ function subscribe(bot, message) {
 
   var askPublications = function (response, convo) {
     convo.say('Hvilke aviser vil du abonnere på?');
-    convo.say(['Skriv inn navnet på avisene du ønsker slik det fremkommer i',
+    convo.ask(['Skriv inn navnet på avisene du ønsker slik det fremkommer i',
       'URL-en, for eksempel \'glomdalen, aasavis, ba\', eller skriv \'alle\'',
       'for å abonnere på alle aviser'].join(' '), [
         {
