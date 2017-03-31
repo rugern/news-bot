@@ -229,6 +229,8 @@ function sendRandomArticle(bot, message) {
     return subscribedArticle(article, user);
   });
 
+  console.log(user);
+  console.log(subscribedArticles);
   if (subscribedArticles.length > 0) {
     var index = Math.floor(Math.random() * subscribedArticles.length);
     var article = subscribedArticles[index];
@@ -339,8 +341,8 @@ Observable.interval(10000)
   })
   .map(article.createArticle)
   .map(storeArticle)
-  .filter(function () {
-    return production;
+  .filter(function (article) {
+    return article && production;
   })
   .subscribe(sendArticle, function (error) {
     console.log(error);
