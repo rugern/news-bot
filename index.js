@@ -75,6 +75,11 @@ function fetchUsers() {
 }
 
 function sendArticle(article, userid) {
+  var receivers = users;
+  if (userid) {
+    receivers = [users[userid]];
+  }
+
   var attachment = {
     type: 'template',
     payload: {
@@ -106,12 +111,10 @@ function sendArticle(article, userid) {
     attachment.payload.elements[0].image_url = article.image;
   }
 
-  if (userid) {
-    bot.say({ channel: userid, attachment: attachment });
-    return;
-  }
-
-  Object.keys(users).forEach(function (user) {
+  Object.keys(receivers).forEach(function (user) {
+    console.log(article);
+    console.log(user);
+    console.log(subscribedArticle(article, user));
     if (subscribedArticle(article, user)) {
       bot.say({ channel: user, attachment: attachment });
     }
