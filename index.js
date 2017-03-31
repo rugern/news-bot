@@ -112,6 +112,8 @@ function sendArticle(article, userid) {
   }
 
   Object.keys(users).forEach(function (user) {
+    console.log(article);
+    console.log(user);
     if (subscribedArticle(article, user)) {
       bot.say({ channel: user, attachment: attachment });
     }
